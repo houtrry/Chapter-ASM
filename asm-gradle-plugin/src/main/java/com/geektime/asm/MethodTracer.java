@@ -16,6 +16,8 @@
 
 package com.geektime.asm;
 
+import org.objectweb.asm.ClassWriter;
+
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -28,8 +30,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
-
-import org.objectweb.asm.ClassWriter;
 
 /**
  * Created by caichongyang on 2017/6/4.
@@ -52,6 +52,12 @@ public class MethodTracer {
         traceMethodFromJar(dependencyJarList);
     }
 
+    /**
+     * 遍历修改.class文件
+     * class文件可以直接修改, 没有像jar文件那样有解压这一步
+     *
+     * @param srcMap
+     */
     private void traceMethodFromSrc(Map<File, File> srcMap) {
         if (null != srcMap) {
             for (Map.Entry<File, File> entry : srcMap.entrySet()) {
@@ -60,6 +66,12 @@ public class MethodTracer {
         }
     }
 
+    /**
+     * 遍历修改.jar文件
+     * jar文件需要先解压
+     *
+     * @param dependencyMap
+     */
     private void traceMethodFromJar(Map<File, File> dependencyMap) {
         if (null != dependencyMap) {
             for (Map.Entry<File, File> entry : dependencyMap.entrySet()) {
@@ -68,6 +80,12 @@ public class MethodTracer {
         }
     }
 
+    /**
+     * 通过ASM修改单个class文件
+     *
+     * @param input
+     * @param output
+     */
     private void innerTraceMethodFromSrc(File input, File output) {
 
         ArrayList<File> classFileList = new ArrayList<>();
@@ -83,7 +101,7 @@ public class MethodTracer {
             try {
                 final String changedFileInputFullPath = classFile.getAbsolutePath();
                 final File changedFileOutput = new File(changedFileInputFullPath.replace(input.getAbsolutePath(), output
-                                                                                                                    .getAbsolutePath()));
+                        .getAbsolutePath()));
                 if (!changedFileOutput.exists()) {
                     changedFileOutput.getParentFile().mkdirs();
                 }
@@ -92,6 +110,8 @@ public class MethodTracer {
                 if (isNeedTraceClass(classFile.getName())) {
                     is = new FileInputStream(classFile);
 
+                    //使用asm修改.class
+                    //并通过classWriter返回修改后的字节流
                     ClassWriter classWriter = ASMCode.run(is);
                     is.close();
 
@@ -115,6 +135,15 @@ public class MethodTracer {
         }
     }
 
+    /**
+     * 1.解压.jar文件, 获取jar中的文件列表
+     * 2.遍历jar中的文件列表element
+     * 3.如果element是需要处理的.class文件, 就通过asm修改, 并生成到修改后的文件
+     * 4.把改后的文件以及不需要修改的文件压缩成新的.jar
+     *
+     * @param input
+     * @param output
+     */
     private void innerTraceMethodFromJar(File input, File output) {
         ZipOutputStream zipOutputStream = null;
         ZipFile zipFile = null;

@@ -78,9 +78,11 @@ public class ASMTraceTransform extends BaseProxyTransform {
         Map<File, File> scrInputMap = new HashMap<>()
 
         transformInvocation.inputs.each { TransformInput input ->
+            //收集class文件信息
             input.directoryInputs.each { DirectoryInput dirInput ->
                 collectAndIdentifyDir(scrInputMap, dirInput, rootOutput, isIncremental)
             }
+            //收集jar文件信息
             input.jarInputs.each { JarInput jarInput ->
                 if (jarInput.getStatus() != Status.REMOVED) {
                     collectAndIdentifyJar(jarInputMap, scrInputMap, jarInput, rootOutput, isIncremental)
@@ -90,6 +92,7 @@ public class ASMTraceTransform extends BaseProxyTransform {
 
 
         MethodTracer methodTracer = new MethodTracer()
+        //通过asm修改字节码
         methodTracer.trace(scrInputMap, jarInputMap)
         origTransform.transform(transformInvocation)
         Log.i("ASM." + getName(), "[transform] cost time: %dms", System.currentTimeMillis() - start)
